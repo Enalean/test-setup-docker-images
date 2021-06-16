@@ -5,6 +5,7 @@ on:
     branches:
     branches-ignore:
       - 'dependabot/**'
+  workflow_dispatch:
 
 permissions:
   contents: read
