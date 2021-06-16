@@ -1,0 +1,24 @@
+name: Delete Docker images corresponding to deleted branches
+
+on:
+  delete
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  purge-image:
+    if: github.event.ref_type == 'branch'
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v2.3.4
+      - name: Get tag to delete
+        run: echo TAG_TO_DELETE="${GITHUB_REF#refs/heads/}" >> $GITHUB_ENV
+      - name: Delete old image
+        uses: bots-house/ghcr-delete-image-action@22bf76ed038fa077092ceeaab338c0bb6878f374
+        with:
+          owner: ${{ github.repository_owner }}
+          name: test-build
+          tag: ${{ env.TAG_TO_DELETE }}
+          token: ${{ secrets.GITHUB_TOKEN }}
