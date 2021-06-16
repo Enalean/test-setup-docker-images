@@ -1,0 +1,36 @@
+name: Build and publish Docker images
+
+on:
+  push:
+    branches:
+    branches-ignore:
+      - 'dependabot/**'
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build:
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v2.3.4
+      - name: Get lowercase base image name
+        run: echo BASE_IMAGE_NAME="$(echo ${{ github.repository_owner }} | tr '[A-Z]' '[a-z]')" >> $GITHUB_ENV
+      - name: Build image
+        run: docker build -t ghcr.io/${{ env.BASE_IMAGE_NAME }}/test-build:${GITHUB_REF#refs/heads/} --label revision=${{ github.sha }} --label workflow_run_id=${{ github.run_id }} .
+      - name: Determine default branch
+        run: |
+          DEFAULT_BRANCH=$(git remote show origin | awk '/HEAD branch/ {print $NF}')
+          echo "default_branch=$DEFAULT_BRANCH" >> $GITHUB_ENV
+          echo "default_branch_ref=refs/heads/$DEFAULT_BRANCH" >> $GITHUB_ENV
+      - name: Build image with latest tag
+        if: github.ref == env.default_branch_ref
+        run: docker build -t ghcr.io/${{ env.BASE_IMAGE_NAME }}/test-build:latest --label revision=${{ github.sha }} --label workflow_run_id=${{ github.run_id }} .
+      - name: Log into ghcr.io
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+      - name: Publish image
+        run: docker push ghcr.io/${{ env.BASE_IMAGE_NAME }}/test-build:${GITHUB_REF#refs/heads/}
+      - name: Publish image with latest tag
+        if: github.ref == env.default_branch_ref
+        run: docker push ghcr.io/${{ env.BASE_IMAGE_NAME }}/test-build:latest
